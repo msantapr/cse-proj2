@@ -6,9 +6,14 @@
 #include <fstream>
 #include <map>
 #include <iostream>
+#include <sstream>
+#include <fstream>
+#include<string>
+
 #include <sys/types.h>
 #include <dirent.h>
 #include <assert.h>
+
 
 #include "rpc/server.h"
 #include "picosha2/picosha2.h"
@@ -83,46 +88,71 @@ void SurfStoreClient::sync() {
 }
 
 FileInfo SurfStoreClient::get_local_fileinfo(string filename) {
-    auto log = logger();
+  auto log = logger();
+  ifstream f(base_dir + "/index.txt");
 
-	ifstream indexfile(base_dir + "/index.json");
-	json j = json::parse(indexfile);
-
-	if (j.find(filename) != j.end()) {
-		json entry = j[filename];
-		int v = entry["version"];
-		list<string> hl = entry["hashlist"];
-
-		return make_tuple(v, hl);
-
-	} else {
-		int v = -1;
-		list<string> blocklist;
-		FileInfo ret = make_tuple(v, list<string>());
-		return ret;
-	}
+  while(!f.eof()) {
+    vector<string> parts;
+    string x;
+    getline(f,x);
+    stringstream ss(x);
+    string tok;
+    while(getline(ss, tok, ' ')) {
+      parts.push_back(tok);
+    }
+    if (parts.size() > 0 && parts[0] == filename) {
+      if (parts.size() > 2)
+        list<string> hl (parts.begin() + 2, parts.end());
+      else
+        list<string> hl;
+      int v = stoi(parts[1]);
+      return make_tuple(v,hl);
+    }
+   }
+  int v = -1;
+	list<string> blocklist;
+	FileInfo ret = make_tuple(v, list<string>());
+  return ret;
 }
 
-void SurfStoreClient::set_local_fileinfo(string filename, FileInfo finfo)
-{
-	std::ifstream i(base_dir + "/index.json");
-	json j;
+void SurfStoreClient::set_local_fileinfo(string filename, FileInfo finfo) {
 
-	if (i) {
-		i >> j;
-	}
+  std::ifstream f(base_dir + "/index.txt");
+  std::ofstream out(base_dir + "/index.txt.new");
+  int v = get<0>(finfo);
+  list<string> hl = get<1>(finfo);
+  bool set = false;
+  while(!f.eof()) {
+    string x;
+    vector<string> parts;
+    getline(f,x);
+    stringstream ss(x);
+    string tok;
+    while(getline(ss, tok, ' ')) {
+      parts.push_back(tok);
+    }
+    if (parts.size() > 0) {
+        if ( parts[0] == filename) {
+          set = true;
+          out << filename << " "<<parts[1]<<" ";
+          for (auto it : hl) out<<it<<" ";
+          out.seekp(-1,ios_base::cur);
+          out <<"\n";
+        }
+        else {
+          out << x<<"\n";
+        }
+      }
+  }
+  if (!set) {
+    out << filename <<" "<< v<< " ";
+    for (auto it : hl) out<<it<<" ";
+    out.seekp(-1,ios_base::cur);
+    out <<"\n";
+  }
+  out.close();
+  f.close();
+  remove("index.txt");
+  rename("index.txt.new", "index.txt");
 
-	json entry;
-	entry["filename"] = filename.c_str();
-	entry["version"] = get<0>(finfo);
-	entry["hashlist"] = get<1>(finfo);
-
-	j[filename.c_str()] = entry;
-
-	std::ofstream ofs;
-	ofs.open(base_dir + "/index.json", std::ofstream::out | std::ofstream::trunc);
-	ofs.close();
-
-	std::ofstream outfile(base_dir + "/index.json");
-	outfile << j << std::endl;
 }
