@@ -17,14 +17,12 @@
 
 #include "rpc/server.h"
 #include "picosha2/picosha2.h"
-#include "json/json.hpp"
 
 #include "logger.hpp"
 #include "SurfStoreTypes.hpp"
 #include "SurfStoreClient.hpp"
 
 using namespace std;
-using json = nlohmann::json;
 
 SurfStoreClient::SurfStoreClient(INIReader& t_config)
     : config(t_config), c(nullptr)
@@ -101,10 +99,7 @@ FileInfo SurfStoreClient::get_local_fileinfo(string filename) {
       parts.push_back(tok);
     }
     if (parts.size() > 0 && parts[0] == filename) {
-      if (parts.size() > 2)
-        list<string> hl (parts.begin() + 2, parts.end());
-      else
-        list<string> hl;
+      list<string> hl (parts.begin() + 2, parts.end());
       int v = stoi(parts[1]);
       return make_tuple(v,hl);
     }
