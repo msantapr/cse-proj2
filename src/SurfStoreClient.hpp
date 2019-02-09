@@ -8,6 +8,7 @@
 #include "rpc/client.h"
 
 #include "logger.hpp"
+#include "SurfStoreTypes.hpp"
 
 using namespace std;
 
