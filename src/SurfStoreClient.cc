@@ -152,7 +152,9 @@ void SurfStoreClient::set_local_fileinfo(string filename, FileInfo finfo) {
   }
   out.close();
   f.close();
-  remove(base_dir + "/index.txt");
-  rename(base_dir + "/index.txt.new", base_dir + "/index.txt");
+  auto *real = (base_dir + "/index.txt").c_str();
+  auto *bkp = (base_dir + "/index.txt.new").c_str();
+  remove(real);
+  rename(bkp,real);
 
 }
