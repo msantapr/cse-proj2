@@ -89,7 +89,12 @@ FileInfo SurfStoreClient::get_local_fileinfo(string filename) {
   auto log = logger();
   log->info ("get_local_fileinfo {}", filename);
   ifstream f(base_dir + "/index.txt");
-
+  if (f.fail()) {
+    int v = -1;
+  	list<string> blocklist;
+  	FileInfo ret = make_tuple(v, list<string>());
+    return ret;
+  }
   do {
     vector<string> parts;
     string x;
