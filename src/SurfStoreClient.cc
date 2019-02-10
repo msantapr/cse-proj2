@@ -87,9 +87,10 @@ void SurfStoreClient::sync() {
 
 FileInfo SurfStoreClient::get_local_fileinfo(string filename) {
   auto log = logger();
+  log->info ("get_local_fileinfo {}", filename);
   ifstream f(base_dir + "/index.txt");
 
-  while(!f.eof()) {
+  do {
     vector<string> parts;
     string x;
     getline(f,x);
@@ -103,7 +104,7 @@ FileInfo SurfStoreClient::get_local_fileinfo(string filename) {
       int v = stoi(parts[1]);
       return make_tuple(v,hl);
     }
-   }
+  } while(!f.eof());
   int v = -1;
 	list<string> blocklist;
 	FileInfo ret = make_tuple(v, list<string>());
@@ -111,13 +112,14 @@ FileInfo SurfStoreClient::get_local_fileinfo(string filename) {
 }
 
 void SurfStoreClient::set_local_fileinfo(string filename, FileInfo finfo) {
-
+  auto log = logger();
+  log->info("set local file info");
   std::ifstream f(base_dir + "/index.txt");
   std::ofstream out(base_dir + "/index.txt.new");
   int v = get<0>(finfo);
   list<string> hl = get<1>(finfo);
   bool set = false;
-  while(!f.eof()) {
+  do {
     string x;
     vector<string> parts;
     getline(f,x);
@@ -129,7 +131,7 @@ void SurfStoreClient::set_local_fileinfo(string filename, FileInfo finfo) {
     if (parts.size() > 0) {
         if ( parts[0] == filename) {
           set = true;
-          out << filename << " "<<parts[1]<<" ";
+          out << filename << " "<<v<<" ";
           for (auto it : hl) out<<it<<" ";
           out.seekp(-1,ios_base::cur);
           out <<"\n";
@@ -138,7 +140,8 @@ void SurfStoreClient::set_local_fileinfo(string filename, FileInfo finfo) {
           out << x<<"\n";
         }
       }
-  }
+    else break;
+  } while(!f.eof());
   if (!set) {
     out << filename <<" "<< v<< " ";
     for (auto it : hl) out<<it<<" ";
@@ -147,9 +150,10 @@ void SurfStoreClient::set_local_fileinfo(string filename, FileInfo finfo) {
   }
   out.close();
   f.close();
-  auto *real = (base_dir + "/index.txt").c_str();
-  auto *bkp = (base_dir + "/index.txt.new").c_str();
-  remove(real);
-  rename(bkp,real);
+  string real = string(base_dir + "/index.txt");
+  string bkp = string(base_dir + "/index.txt.new");
+
+  remove(real.c_str());
+  rename(bkp.c_str(),real.c_str());
 
 }
