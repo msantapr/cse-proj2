@@ -1,0 +1,1 @@
+ssh -vvv -i ~/.ssh/cse124-hw2-msantapr-california.pem ec2-user@ec2-18-236-144-237.us-west-2.compute.amazonaws.com (how to log into this aws)
