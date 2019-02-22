@@ -10,3 +10,8 @@ typedef tuple<int, list<string>> FileInfo;
 typedef map<string, FileInfo> FileInfoMap;
 
 #endif // SURFSTORETYPES_HPP
+
+
+/* get<0>(FileInfoMap) returns version number
+ * get<1>(FileInfoMap) returns list of hash strings
+ */

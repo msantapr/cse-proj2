@@ -66,26 +66,40 @@ SurfStoreClient::~SurfStoreClient()
 }
 
 void SurfStoreClient::sync() {
-    auto log = logger();
+  auto log = logger();
+  log->info("syncing...");
+
+  list<string> myList = get_blocks_from_file("kitten.jpg");
+  create_file_from_blocklist("new_kitten.jpg", myList);
+
+  /*vector<FileInfo> files;   // get the local index to compare to remote index
+  FileInfoMap remoteIndex = c->call("get_fileinfo_map").as<FileInfoMap>(); 
+
 
 	log->info("Calling ping");
 	c->call("ping");
 
-	log->info("Calling get_block())");
-	string block = c->call("get_block", "1234").as<string>();
+  list<string> s = get_blocks_from_file("hello.txt");
+  log->info("size: {}", s.size());
 
 	log->info("Calling get_fileinfo_map())");
 	FileInfoMap map = c->call("get_fileinfo_map").as<FileInfoMap>();
+  c->call("store_block","hasher","asdf_pie");
+
+  log->info("Calling get_block())");
+  string block = c->call("get_block", "hasher").as<string>();
+  log->info("get block return {}", block);
+
 	FileInfo file1 = map["file1.txt"];
 	int v = get<0>(file1);
 	log->info("got a version of {}", v);
 
 	FileInfo file2 = map["file2.dat"];
 	v = get<0>(file2);
-	log->info("got a version of {}", v);
+	log->info("got a version of {}", v); */
 }
 
-FileInfo SurfStoreClient::get_local_fileinfo(string filename) {
+FileInfo SurfStoreClient::get_local_fileinfo(string filename) { // loop through using to locate changes
   auto log = logger();
   log->info ("get_local_fileinfo {}", filename);
   ifstream f(base_dir + "/index.txt");
@@ -116,7 +130,7 @@ FileInfo SurfStoreClient::get_local_fileinfo(string filename) {
   return ret;
 }
 
-void SurfStoreClient::set_local_fileinfo(string filename, FileInfo finfo) {
+void SurfStoreClient::set_local_fileinfo(string filename, FileInfo finfo) {   // use iterator loop through the returned fmap to update local index
   auto log = logger();
   log->info("set local file info");
   std::ifstream f(base_dir + "/index.txt");
@@ -162,3 +176,59 @@ void SurfStoreClient::set_local_fileinfo(string filename, FileInfo finfo) {
   rename(bkp.c_str(),real.c_str());
 
 }
+
+list<string> SurfStoreClient::get_blocks_from_file(string filename) {
+  auto log = logger();
+  list<string> blocks;
+
+  log->info("attempting to get blocks from file {}", filename);
+  std::ifstream f(base_dir + "/" + filename);
+  if(f.fail()) {
+    log->info("{} does not exist or something bad happened", filename);
+    return blocks;
+  }
+
+  f.seekg(0, f.end);
+  int fileLength = f.tellg();     
+  f.seekg(0, f.beg);
+
+  unsigned int blockAmount = (fileLength/blocksize) + 1;
+
+  log->info("about to read {} from {}", fileLength, filename);
+
+  while(fileLength > 0) {
+    char * buffer = new char[blocksize];
+    f.read(buffer, blocksize);
+    std::string s(buffer, blocksize);
+    blocks.push_back(s);
+    fileLength -= blocksize;
+  }
+
+  f.close();
+
+  if(blockAmount != blocks.size()) {
+    log->info("Err: expected {} blocks to return but received {} blocks instead", blockAmount, blocks.size());
+    return blocks;
+  }
+  
+  log->info("Success: returned {} blocks", blocks.size());
+  return blocks;
+}
+
+
+// this assumes that blocks is the binary data, not the hash. do that conversion in sync
+void SurfStoreClient::create_file_from_blocklist(string filename, list<string> blocks) {
+  auto log = logger();
+  log->info("creating {} with {} blocks", filename, blocks.size());
+
+  std::ofstream out(base_dir + "/" + filename);
+
+  while(!blocks.empty()) {
+    out << blocks.front();
+    blocks.pop_front();
+  }
+
+  out.close();
+
+}
+
