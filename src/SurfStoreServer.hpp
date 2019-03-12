@@ -12,7 +12,7 @@ public:
     SurfStoreServer(INIReader& t_config);
 
     void launch();
-
+    void printRemoteMap();
     const int NUM_THREADS = 8;
     unordered_map<string, string> hashBlocks; 
     FileInfoMap remoteMap;

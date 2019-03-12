@@ -68,12 +68,10 @@ void SurfStoreServer::launch()
 
 		auto log = logger();
 		log->info("store_block()");
-		
-		log->info("input hash value is {} ", hash);
-		log->info("input data value is {} ", data);
+		//log->info("data {}" , data);
+		log->info("data size {}", data.size());
 		hashBlocks.insert(make_pair(hash,data));
- 
-		log->info("testing hashBlocks map {} ", hashBlocks[hash]);
+
 		return;
 	});
 
@@ -98,12 +96,31 @@ void SurfStoreServer::launch()
 	});
 
 	//TODO: update the FileInfo entry for a given file    (call when you sync changes to cloud to update server map)
-	srv.bind("update_file", [this](string filename, FileInfo finfo) {
-		int new_version = get<0>(finfo);
+	srv.bind("update_file", [this](string filename, FileInfo finfo) { // need to include creation case
+		auto log = logger();
+		int parameter_version = get<0>(finfo);
 		list<string> new_hashlist = get<1>(finfo);
+		log->info("update_file()");
 
-		get<0>(remoteMap[filename]) = new_version;
+		try {
+			FileInfo f = remoteMap.at(filename);
+		}
+		catch (const std::out_of_range& oor) {
+			get<0>(remoteMap[filename])++;
+			get<1>(remoteMap[filename]) = new_hashlist;
+			return 1;
+		}
+
+		if( parameter_version != get<0>(remoteMap.at(filename)) ) { // check passed in parameter version 
+			log->info("someone barely beat you");
+			return 0;
+		}
+
+		get<0>(remoteMap[filename])++;
 		get<1>(remoteMap[filename]) = new_hashlist;
+
+		//printRemoteMap();
+		return 1;
 		
 	});
 
@@ -112,7 +129,22 @@ void SurfStoreServer::launch()
 	srv.run();
 }
 
+void SurfStoreServer::printRemoteMap() {
+	auto log = logger();
+  FileInfoMap :: iterator p;
 
+  for (p = remoteMap.begin(); p != remoteMap.end(); p++) {
+  	log->info("file name {}", p->first);
+  	log->info("version {}", get<0>(p->second));
+  	auto it = get<1>(p->second).begin();
+
+  	for(it = get<1>(p->second).begin(); it != get<1>(p->second).end(); it++) {
+  		log->info("hash {}", *it);
+  		log->info("data {}", hashBlocks.at(*it));
+  	}
+  }
+
+}
 /*
  * client manages their own base_dir files. 
  * any updates to that clients files are managed in their local index.
@@ -124,3 +156,15 @@ void SurfStoreServer::launch()
  * situation 3: 
 
 */
+
+
+/*
+ * if remote map and local map arent the same...
+ * 1) if there is a new entry in the cloud not in client, just download that entry on sync
+ * 2) if there is an entry with a new hashlist in the cloud not in client, downlod that entry on sync
+ * 3) if there is an new on client not in cloud, upload that entry on cloud
+ * 4) if there is an entry on client with different hashlist than cloud, upload entry on cloud (update version + data)
+
+
+
+ * at the end of sync, redownload new server map and put onto local index */
